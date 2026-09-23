@@ -97,11 +97,17 @@ class AddDownloadActivity : ABDMActivity() {
     }
 
     private fun getReferrerUrl(intent: Intent): String? {
-        // most browsers set this when they hand a link over to us
-        intent.getStringExtra(Intent.EXTRA_REFERRER_NAME)
-            ?.takeIf { it.isNotBlank() }
-            ?.let { return it }
-        val fromActivity = referrer?.toString()
-        return fromActivity?.takeIf { it.isNotBlank() }
+        // browsers usually pass something like "android-app://com.android.chrome/" here,
+        // which is useless as an http Referer (and would pollute the download page field),
+        // so only accept real http(s) urls
+        return listOfNotNull(
+            intent.getStringExtra(Intent.EXTRA_REFERRER_NAME),
+            referrer?.toString(),
+        ).firstOrNull { it.isHttpUrl() }
+    }
+
+    private fun String.isHttpUrl(): Boolean {
+        return startsWith("http://", ignoreCase = true) ||
+            startsWith("https://", ignoreCase = true)
     }
 }

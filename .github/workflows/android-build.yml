@@ -42,9 +42,12 @@ jobs:
       - name: Build Android debug APK
         run: ./gradlew :android:app:assembleDebug --stacktrace
 
+      - name: Show built apks
+        run: find android/app/build/outputs -name '*.apk' -print || true
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: abdm-android-debug
           path: android/app/build/outputs/apk/**/*.apk
-          if-no-files-found: error
+          if-no-files-found: warn

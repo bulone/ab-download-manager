@@ -1,5 +1,6 @@
 package com.abdownloadmanager.android.pages.editdownload
 
+import kotlinx.coroutines.flow.update
 import arrow.core.Some
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -124,9 +125,11 @@ fun ResponsiveDialogScope.EditDownloadPage(
                 DownloadPageTextField(
                     text = downloadPageCredentials.downloadPage.orEmpty(),
                     setText = { pageLink ->
-                        downloadInputs.credentials.value = downloadPageCredentials.copy(
-                            downloadPage = Some(pageLink.takeIf { it.isNotBlank() })
-                        )
+                        downloadInputs.credentials.update {
+                            it.copy(
+                                downloadPage = Some(pageLink.takeIf { it.isNotBlank() })
+                            )
+                        }
                     },
                 )
                 val name by downloadInputs.name.collectAsState()
