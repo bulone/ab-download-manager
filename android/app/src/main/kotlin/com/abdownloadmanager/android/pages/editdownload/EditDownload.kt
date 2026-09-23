@@ -121,6 +121,7 @@ fun ResponsiveDialogScope.EditDownloadPage(
                     // stranger part is that in this case if we use ? before takeIf then it will work! (`}.takeIf {` is  buggy but `}?.takeIf {` works!)
                     // maybe there is a bug in compose compiler, or maybe I'm missed something. if you read this ,and you know why! please let me know!
                 )
+                Spacer(Modifier.size(8.dp))
                 val downloadPageCredentials by downloadInputs.credentials.collectAsState()
                 DownloadPageTextField(
                     text = downloadPageCredentials.downloadPage.orEmpty(),

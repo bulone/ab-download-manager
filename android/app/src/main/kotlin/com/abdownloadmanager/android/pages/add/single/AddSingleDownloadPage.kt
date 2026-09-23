@@ -108,6 +108,7 @@ fun ResponsiveDialogScope.AddSingleDownloadPage(
                         },
                         modifier = Modifier
                     )
+                    Spacer(Modifier.size(8.dp))
                     DownloadPageTextField(
                         text = credentials.downloadPage.orEmpty(),
                         setText = { pageLink ->

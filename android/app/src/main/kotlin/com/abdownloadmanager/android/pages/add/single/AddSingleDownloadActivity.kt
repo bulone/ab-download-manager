@@ -53,6 +53,7 @@ class AddSingleDownloadActivity : ABDMActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val fromExternal = intent.getBooleanExtra(EXTRA_FROM_EXTERNAL, false)
         val myRetainedComponent = myRetainedComponent {
             // TODO consider use a factory to create AndroidAddSingleDownloadComponent
             // we may create memory leaks if we accidentally pass Activity::this into the component lambdas
@@ -79,7 +80,7 @@ class AddSingleDownloadActivity : ABDMActivity() {
                 onRequestDownload = { item, categoryId ->
                     scope.launch {
                         val id = appManager.startNewDownload(item, categoryId).await()
-                        if (appSettingsStorage.showDownloadProgressDialog.value) {
+                        if (!fromExternal && appSettingsStorage.showDownloadProgressDialog.value) {
                             runCatching {
                                 appContext.startActivity(
                                     SingleDownloadPageActivity.createIntent(
@@ -91,6 +92,9 @@ class AddSingleDownloadActivity : ABDMActivity() {
                             }.onFailure {
                                 it.printStackTrace()
                             }
+                        } else {
+                            // external request: live notification takes over, close the dialog
+                            closeAddDownloadDialog()
                         }
                     }
                 },
@@ -195,6 +199,7 @@ class AddSingleDownloadActivity : ABDMActivity() {
     companion object {
         const val COMPONENT_CONFIG_KEY = "ComponentConfig"
         const val LINK_KEY = "link"
+        const val EXTRA_FROM_EXTERNAL = "fromExternal"
         fun createIntent(
             context: Context,
             singleAddConfig: AddDownloadConfig.SingleAddConfig,

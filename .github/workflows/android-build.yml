@@ -5,6 +5,14 @@ on:
     branches:
       - test
   workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        type: choice
+        options:
+          - debug
+          - release
+        default: debug
 
 permissions:
   contents: read
@@ -12,6 +20,8 @@ permissions:
 jobs:
   android-debug:
     runs-on: ubuntu-latest
+    env:
+      BUILD_TYPE: ${{ github.event.inputs.build_type || 'debug' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,15 +49,16 @@ jobs:
           restore-keys: |
             android-debug-gradle-
 
-      - name: Build Android debug APK
+      - name: Build Android APK
         run: |
           set +e
-          ./gradlew :android:app:assembleDebug --stacktrace 2>&1 | tee build.log
+          if [ "$BUILD_TYPE" = "release" ]; then TASK=assembleRelease; CFG=releaseCompileClasspath; else TASK=assembleDebug; CFG=debugCompileClasspath; fi
+          ./gradlew ":android:app:$TASK" --stacktrace 2>&1 | tee build.log
           code=${PIPESTATUS[0]}
           {
             echo '## androidx.core 解析结果'
             echo '````'
-            ./gradlew :android:app:dependencies --configuration debugCompileClasspath 2>/dev/null | grep -i 'androidx.core' | sort -u || echo 'no match'
+            ./gradlew :android:app:dependencies --configuration $CFG 2>/dev/null | grep -i 'androidx.core' | sort -u || echo 'no match'
             echo '````'
             echo '## Kotlin 错误行'
             echo '````'
@@ -56,12 +67,24 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           exit $code
 
+      - name: Sign release APK
+        if: ${{ env.BUILD_TYPE == 'release' }}
+        run: |
+          set -e
+          UNSIGNED=$(find android/app/build/outputs/apk/release -name '*unsigned*.apk' 2>/dev/null | head -1 || true)
+          if [ -z "$UNSIGNED" ]; then echo 'no unsigned apk'; exit 0; fi
+          KS="$RUNNER_TEMP/ci.keystore"
+          keytool -genkeypair -keystore "$KS" -storepass android -keypass android -alias ci -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=CI"
+          BT=$(ls -d "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"/build-tools/* | sort -V | tail -1)
+          "$BT/zipalign" -f -p 4 "$UNSIGNED" "$RUNNER_TEMP/aligned.apk"
+          "$BT/apksigner" sign --ks "$KS" --ks-pass pass:android --key-pass pass:android --ks-key-alias ci --out android/app/build/outputs/apk/release/app-release-signed.apk "$RUNNER_TEMP/aligned.apk"
+          echo 'signed -> app-release-signed.apk'
       - name: Show built apks
         run: find android/app/build/outputs -name '*.apk' -print || true
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: abdm-android-debug
+          name: abdm-android-${{ env.BUILD_TYPE }}
           path: android/app/build/outputs/apk/**/*.apk
           if-no-files-found: warn

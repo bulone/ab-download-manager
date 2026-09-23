@@ -38,6 +38,7 @@ import ir.amirab.util.suspendGuardedEntry
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import java.util.*
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.milliseconds
@@ -53,6 +54,7 @@ class ABDMAppManager(
     val serviceNotificationManager: ABDMServiceNotificationManager,
     private val appSettingsStorage: AppSettingsStorage,
 ) : KoinComponent, NotificationSender {
+    private val downloadItemOpener: AndroidDownloadItemOpener by inject()
     private var booted = guardedEntry()
     private var downloadSystemBooted = suspendGuardedEntry()
     fun isSoundAllowed(): Boolean {
@@ -211,6 +213,45 @@ class ABDMAppManager(
                             }
                     }
 
+                    AndroidConstants.Intents.OPEN_FILE_ACTION -> {
+                        intent
+                            .getLongExtra(AndroidConstants.Intents.TOGGLE_DOWNLOAD_ACTION_DOWNLOAD_ID, -1)
+                            .takeIf { it > -1 }
+                            ?.let {
+                                scope.launch {
+                                    runCatching { downloadItemOpener.openDownloadItem(it) }
+                                }
+                            }
+                    }
+
+                    AndroidConstants.Intents.CLOSE_SERVICE_ACTION -> {
+                        val id = intent
+                            .getLongExtra(AndroidConstants.Intents.TOGGLE_DOWNLOAD_ACTION_DOWNLOAD_ID, -1)
+                        if (id > -1) {
+                            serviceNotificationManager.dismissDownloadNotification(id)
+                        }
+                        scope.launch {
+                            if (downloadSystem.getUnfinishedDownloadIds().isEmpty()) {
+                                stopOurService()
+                            }
+                        }
+                    }
+
+                    AndroidConstants.Intents.REMOVE_ACTION -> {
+                        intent
+                            .getLongExtra(AndroidConstants.Intents.TOGGLE_DOWNLOAD_ACTION_DOWNLOAD_ID, -1)
+                            .takeIf { it > -1 }
+                            ?.let {
+                                scope.launch {
+                                    downloadSystem.removeDownload(
+                                        id = it,
+                                        alsoRemoveFile = true,
+                                        context = User,
+                                    )
+                                }
+                            }
+                    }
+
                     AndroidConstants.Intents.TOGGLE_ACTION -> {
                         intent
                             .getLongExtra(AndroidConstants.Intents.TOGGLE_DOWNLOAD_ACTION_DOWNLOAD_ID, -1)
@@ -247,6 +288,9 @@ class ABDMAppManager(
                 addAction(AndroidConstants.Intents.TOGGLE_ACTION)
                 addAction(AndroidConstants.Intents.RESUME_ACTION)
                 addAction(AndroidConstants.Intents.STOP_ACTION)
+                addAction(AndroidConstants.Intents.REMOVE_ACTION)
+                addAction(AndroidConstants.Intents.OPEN_FILE_ACTION)
+                addAction(AndroidConstants.Intents.CLOSE_SERVICE_ACTION)
                 addAction(AndroidConstants.Intents.STOP_ALL_ACTION)
                 addAction(AndroidConstants.Intents.EXIT_ACTION)
             },

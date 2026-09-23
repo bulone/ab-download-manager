@@ -62,7 +62,7 @@ class AddDownloadActivity : ABDMActivity() {
                     importOptions = ImportOptions(),
                 ),
                 json = json,
-            )
+            ).putExtra(AddSingleDownloadActivity.EXTRA_FROM_EXTERNAL, true)
         }
         startActivity(intent)
         finish()

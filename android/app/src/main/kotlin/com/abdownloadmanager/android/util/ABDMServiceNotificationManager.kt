@@ -150,14 +150,17 @@ class ABDMServiceNotificationManager(
                         launch {
                             // wait a while until we make sure download progress notification not sending anymore
                             delay(1.seconds)
+                            val finishedId = getNotificationIdForDownloadItem(event.downloadItem.id)
                             runCatching {
                                 notificationManagerCompat.notify(
-                                    getNotificationIdForDownloadItem(event.downloadItem.id),
+                                    finishedId,
                                     createFinishedDownloadItemNotification(event.downloadItem)
                                 )
                             }.onFailure {
                                 it.printStackTrace()
                             }
+                            delay(5.seconds)
+                            runCatching { notificationManagerCompat.cancel(finishedId) }
                         }
                     }
                 }
@@ -174,7 +177,7 @@ class ABDMServiceNotificationManager(
         return AndroidConstants.SERVICE_NOTIFICATION_ID + 1 + downloadId.hashCode()
     }
 
-    private fun dismissDownloadNotification(downloadId: Long) {
+    fun dismissDownloadNotification(downloadId: Long) {
         notificationManagerCompat.cancel(getNotificationIdForDownloadItem(downloadId))
     }
 
@@ -207,6 +210,7 @@ class ABDMServiceNotificationManager(
             .Builder(context, AndroidConstants.NOTIFICATION_DOWNLOAD_CHANEL_ID)
             .setContentTitle(serviceIsRunningText)
             .setContentText(statusString)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(statusString))
             .setSmallIcon(R.drawable.ic_monochrome)
             // group
 //            .setGroupSummary(true)
@@ -333,6 +337,23 @@ class ABDMServiceNotificationManager(
                         )
                     )
                 }
+                // stop: cancel the download and remove the task — the only action that
+                // makes this notification go away
+                addAction(
+                    0,
+                    Res.string.cancel.asStringSource().getString(),
+                    PendingIntent.getBroadcast(
+                        context,
+                        AndroidConstants.SERVICE_NOTIFICATION_ID,
+                        Intent(AndroidConstants.Intents.REMOVE_ACTION).apply {
+                            putExtra(
+                                AndroidConstants.Intents.TOGGLE_DOWNLOAD_ACTION_DOWNLOAD_ID,
+                                downloadItemState.id
+                            )
+                        },
+                        flagOfPendingIntent,
+                    )
+                )
             }
             .setContentIntent(openSingleDownloadActivityIntent)
             .build()
@@ -368,8 +389,19 @@ class ABDMServiceNotificationManager(
                     setWhen(it)
                 }
             }
+            .setStyle(NotificationCompat.BigTextStyle().bigText(statusString))
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(openSingleDownloadActivityIntent)
+            .addAction(0, Res.string.open.asStringSource().getString(), PendingIntent.getBroadcast(
+                context, AndroidConstants.SERVICE_NOTIFICATION_ID,
+                Intent(AndroidConstants.Intents.OPEN_FILE_ACTION).apply {
+                    putExtra(AndroidConstants.Intents.TOGGLE_DOWNLOAD_ACTION_DOWNLOAD_ID, downloadItemState.id)
+                }, flagOfPendingIntent))
+            .addAction(0, Res.string.close.asStringSource().getString(), PendingIntent.getBroadcast(
+                context, AndroidConstants.SERVICE_NOTIFICATION_ID,
+                Intent(AndroidConstants.Intents.CLOSE_SERVICE_ACTION).apply {
+                    putExtra(AndroidConstants.Intents.TOGGLE_DOWNLOAD_ACTION_DOWNLOAD_ID, downloadItemState.id)
+                }, flagOfPendingIntent))
             .setAutoCancel(true)
             .build()
     }
@@ -395,7 +427,8 @@ class ABDMServiceNotificationManager(
             RenderDownloadItemNotifications(
                 remember(notFinishedDownloads) {
                     notFinishedDownloads.filter {
-                        it.status is DownloadJobStatus.IsActive
+                        // keep paused downloads so the resume button stays reachable
+                        it.canBePaused() || it.canBeResumed()
                     }
                 }
             )
