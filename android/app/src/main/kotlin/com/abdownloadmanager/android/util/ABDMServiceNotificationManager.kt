@@ -299,26 +299,27 @@ class ABDMServiceNotificationManager(
                     } else {
                         style.setProgress(progressValue)
                     }
-                    // text shown next to the icon inside the status-bar chip
-                    style.setShortCriticalText(
-                        when {
-                            downloadItemState.isWaiting ->
-                                Res.string.waiting.asStringSource().getString()
+                }
+            )
+            // setShortCriticalText lives on the Builder, not on ProgressStyle: androidx
+            // forwards it to the platform Notification.Builder. Text shows in the chip.
+            .setShortCriticalText(
+                when {
+                    downloadItemState.isWaiting ->
+                        Res.string.waiting.asStringSource().getString()
 
-                            // Canceled and IDLE both implement CanBeResumed, so they
-                            // have to be told apart before the shared supertype check
-                            downloadItemState.status is DownloadJobStatus.Canceled ->
-                                Res.string.canceled.asStringSource().getString()
+                    // Canceled and IDLE both implement CanBeResumed, so they
+                    // have to be told apart before the shared supertype check
+                    downloadItemState.status is DownloadJobStatus.Canceled ->
+                        Res.string.canceled.asStringSource().getString()
 
-                            downloadItemState.status is DownloadJobStatus.IDLE ->
-                                Res.string.paused.asStringSource().getString()
+                    downloadItemState.status is DownloadJobStatus.IDLE ->
+                        Res.string.paused.asStringSource().getString()
 
-                            progressValue != null -> "$progressValue%"
+                    downloadItemState.percent != null -> "${downloadItemState.percent}%"
 
-                            else ->
-                                Res.string.downloading.asStringSource().getString()
-                        }
-                    )
+                    else ->
+                        Res.string.downloading.asStringSource().getString()
                 }
             )
             .setRequestPromotedOngoing(true)
@@ -417,14 +418,13 @@ class ABDMServiceNotificationManager(
                     setWhen(it)
                 }
             }
-            // ProgressStyle, not BigTextStyle: only the live-update styles expose
-            // setShortCriticalText, which is what the status-bar chip shows
+            // ProgressStyle, not BigTextStyle: only the live-update styles can be promoted
             .setStyle(
                 NotificationCompat.ProgressStyle().also { style ->
                     style.setProgress(100)
-                    style.setShortCriticalText(Res.string.finished.asStringSource().getString())
                 }
             )
+            .setShortCriticalText(Res.string.finished.asStringSource().getString())
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(openSingleDownloadActivityIntent)
             .addAction(0, Res.string.open.asStringSource().getString(), PendingIntent.getBroadcast(
