@@ -34,8 +34,11 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.text.input.TextFieldLineLimits
-import androidx.compose.foundation.text.input.edit
+import androidx.compose.foundation.text.KeyboardActionScope
+import androidx.compose.foundation.text.input.KeyboardActionHandler
+import androidx.compose.foundation.text.input.TextFieldDecorator
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.takeOrElse
@@ -92,16 +95,43 @@ fun MyTextField(
     val state = rememberTextFieldState(text)
     var lastEmittedText by remember { mutableStateOf(text) }
     androidx.compose.runtime.LaunchedEffect(text) {
-        if (text != state.text) {
+        // state.text is a CharSequence here, so compare it as a String: a String never
+        // equals a non-String CharSequence, and that would make this push run on every
+        // recomposition and keep throwing the caret to the end while typing.
+        if (text != state.text.toString()) {
             state.edit { replace(0, length, text) }
         }
     }
     androidx.compose.runtime.LaunchedEffect(state) {
         androidx.compose.runtime.snapshotFlow { state.text }.collect { newText ->
-            if (newText != lastEmittedText) {
-                lastEmittedText = newText
-                onTextChange(newText)
+            val newString = newText.toString()
+            if (newString != lastEmittedText) {
+                lastEmittedText = newString
+                onTextChange(newString)
             }
+        }
+    }
+
+    // The state-based field takes a KeyboardActionHandler instead of KeyboardActions,
+    // and that handler is not told which IME action fired, so map the action configured
+    // in keyboardOptions back onto the matching legacy callback.
+    val keyboardActionHandler = remember(keyboardActions, keyboardOptions) {
+        KeyboardActionHandler { performDefaultAction ->
+            val scope = object : KeyboardActionScope {
+                override fun defaultKeyboardAction(imeAction: ImeAction) {
+                    performDefaultAction()
+                }
+            }
+            val action = when (keyboardOptions.imeAction) {
+                ImeAction.Done -> keyboardActions.onDone
+                ImeAction.Go -> keyboardActions.onGo
+                ImeAction.Next -> keyboardActions.onNext
+                ImeAction.Previous -> keyboardActions.onPrevious
+                ImeAction.Search -> keyboardActions.onSearch
+                ImeAction.Send -> keyboardActions.onSend
+                else -> null
+            }
+            if (action != null) action.invoke(scope) else performDefaultAction()
         }
     }
 
@@ -159,7 +189,7 @@ fun MyTextField(
                     fontSize = fontSize
                 )
             ),
-            decorationBox = { innerTextField ->
+            decorator = TextFieldDecorator { innerTextField ->
                 // The padding lives here, not on the text field, so the field's own
                 // bounds cover it and a tap on the padding focuses the field and places
                 // the caret by itself - no parent tap handler to fight over focus.
@@ -180,7 +210,7 @@ fun MyTextField(
                 }
             },
             cursorBrush = SolidColor(myColors.primary),
-            keyboardActions = keyboardActions,
+            onKeyboardAction = keyboardActionHandler,
             keyboardOptions = keyboardOptions,
         )
         end?.let {
