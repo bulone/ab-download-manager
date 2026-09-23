@@ -4,6 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import arrow.core.firstOrNone
 import arrow.core.getOrElse
+import arrow.core.None
+import arrow.core.Some
 import com.abdownloadmanager.android.pages.add.multiple.AddMultiDownloadActivity
 import com.abdownloadmanager.android.pages.add.single.AddSingleDownloadActivity
 import com.abdownloadmanager.android.pages.onboarding.permissions.PermissionManager
@@ -77,8 +79,29 @@ class AddDownloadActivity : ABDMActivity() {
                 intent.data?.toString().orEmpty()
             }
         }
+        val referrerUrl = getReferrerUrl(intent)
         return DefaultDownloadCredentialsExtractor
             .extract(links)
             .distinctBy { it.link }
+            .map { credentials ->
+                if (referrerUrl == null) {
+                    credentials
+                } else {
+                    // keep the page url so the downloader can send it as Referer (anti-hotlink sites)
+                    credentials.copy(
+                        link = None,
+                        downloadPage = Some(referrerUrl),
+                    )
+                }
+            }
+    }
+
+    private fun getReferrerUrl(intent: Intent): String? {
+        // most browsers set this when they hand a link over to us
+        intent.getStringExtra(Intent.EXTRA_REFERRER_NAME)
+            ?.takeIf { it.isNotBlank() }
+            ?.let { return it }
+        val fromActivity = referrer?.toString()
+        return fromActivity?.takeIf { it.isNotBlank() }
     }
 }

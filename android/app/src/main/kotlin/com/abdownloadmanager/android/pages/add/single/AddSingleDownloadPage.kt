@@ -108,6 +108,16 @@ fun ResponsiveDialogScope.AddSingleDownloadPage(
                         },
                         modifier = Modifier
                     )
+                    DownloadPageTextField(
+                        text = credentials.downloadPage.orEmpty(),
+                        setText = { pageLink ->
+                            component.setCredentials(
+                                credentials.copy(
+                                    downloadPage = Some(pageLink.ifBlank { null })
+                                )
+                            )
+                        },
+                    )
                     AnimatedVisibility(showMoreInputs) {
                         Column {
                             Space()
@@ -611,6 +621,19 @@ private fun DownloadErrorInfoButton(
             contentColor = myColors.error,
         )
     }
+}
+
+@Composable
+private fun DownloadPageTextField(
+    text: String,
+    setText: (String) -> Unit,
+) {
+    MyTextFieldWithIcons(
+        text,
+        setText,
+        myStringResource(Res.string.download_page_link_optional),
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable

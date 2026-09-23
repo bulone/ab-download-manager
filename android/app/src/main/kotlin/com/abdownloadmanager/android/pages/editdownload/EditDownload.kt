@@ -1,5 +1,6 @@
 package com.abdownloadmanager.android.pages.editdownload
 
+import arrow.core.Some
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -118,6 +119,15 @@ fun ResponsiveDialogScope.EditDownloadPage(
                     // it seems buggy (compose won't render ui properly)
                     // stranger part is that in this case if we use ? before takeIf then it will work! (`}.takeIf {` is  buggy but `}?.takeIf {` works!)
                     // maybe there is a bug in compose compiler, or maybe I'm missed something. if you read this ,and you know why! please let me know!
+                )
+                val downloadPageCredentials by downloadInputs.credentials.collectAsState()
+                DownloadPageTextField(
+                    text = downloadPageCredentials.downloadPage.orEmpty(),
+                    setText = { pageLink ->
+                        downloadInputs.credentials.value = downloadPageCredentials.copy(
+                            downloadPage = Some(pageLink.ifBlank { null })
+                        )
+                    },
                 )
                 val name by downloadInputs.name.collectAsState()
                 Spacer(Modifier.size(8.dp))
@@ -470,6 +480,19 @@ private fun MyTextFieldIcon(
             .size(16.dp))
 }
 
+
+@Composable
+private fun DownloadPageTextField(
+    text: String,
+    setText: (String) -> Unit,
+) {
+    MyTextFieldWithIcons(
+        text,
+        setText,
+        myStringResource(Res.string.download_page_link_optional),
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
 
 @Composable
 private fun UrlTextField(

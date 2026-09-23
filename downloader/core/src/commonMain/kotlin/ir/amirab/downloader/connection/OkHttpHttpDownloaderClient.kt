@@ -51,6 +51,17 @@ class OkHttpHttpDownloaderClient(
                             ?.forEach { (k, v) ->
                                 header(k, v)
                             }
+                        // anti-hotlink: some servers (CDNs) reject the request unless Referer matches the page
+                        val hasReferer = downloadCredentials.headers
+                            ?.keys
+                            ?.any { it.equals("Referer", true) } == true
+                        if (!hasReferer) {
+                            downloadCredentials.downloadPage
+                                ?.takeIf { it.isNotBlank() }
+                                ?.let { page ->
+                                    header("Referer", page)
+                                }
+                        }
                         defaultHeadersInLast().forEach { (k, v) ->
                             header(k, v)
                         }
