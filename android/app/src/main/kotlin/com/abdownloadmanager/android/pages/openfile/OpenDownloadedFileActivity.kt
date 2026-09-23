@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.webkit.MimeTypeMap
 import android.widget.Toast
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.FileProvider
 import com.abdownloadmanager.android.util.AndroidConstants
 import java.io.File
@@ -27,11 +28,18 @@ class OpenDownloadedFileActivity : Activity() {
             finish()
             return
         }
+        val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, -1)
         try {
             openFile(File(folder, name))
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(this, e.localizedMessage ?: "cannot open file", Toast.LENGTH_LONG).show()
+        }
+        // A notification action does not dismiss its own notification: setAutoCancel
+        // only covers taps on the notification body. So the finished-download
+        // notification stayed on screen after Open had already handed the file over.
+        if (notificationId != -1) {
+            NotificationManagerCompat.from(this).cancel(notificationId)
         }
         finish()
     }
@@ -50,10 +58,18 @@ class OpenDownloadedFileActivity : Activity() {
     }
 
     companion object {
-        fun createIntent(context: Context, folder: String, name: String): Intent {
+        const val EXTRA_NOTIFICATION_ID = "abdm.notification.id"
+
+        fun createIntent(
+            context: Context,
+            folder: String,
+            name: String,
+            notificationId: Int,
+        ): Intent {
             return Intent(context, OpenDownloadedFileActivity::class.java).apply {
                 putExtra(AndroidConstants.Intents.EXTRA_FILE_FOLDER, folder)
                 putExtra(AndroidConstants.Intents.EXTRA_FILE_NAME, name)
+                putExtra(EXTRA_NOTIFICATION_ID, notificationId)
             }
         }
     }

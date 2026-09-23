@@ -445,6 +445,7 @@ class ABDMServiceNotificationManager(
                     context,
                     downloadItemState.folder,
                     downloadItemState.name,
+                    getNotificationIdForDownloadItem(downloadItemState.id),
                 ), flagOfPendingIntent))
             .addAction(0, Res.string.close.asStringSource().getString(), PendingIntent.getBroadcast(
                 context, AndroidConstants.SERVICE_NOTIFICATION_ID,

@@ -30,12 +30,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.isSpecified
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
@@ -70,8 +66,11 @@ fun MyTextField(
     end: @Composable (RowScope.() -> Unit)? = null,
 ) {
     val focusRequester = remember { FocusRequester() }
-    val fm = LocalFocusManager.current
     val isFocused by interactionSource.collectIsFocusedAsState()
+    // temporary trace: remove once the keyboard flicker is gone
+    androidx.compose.runtime.LaunchedEffect(isFocused) {
+        println("ABDM_FOCUS focused=$isFocused text=$text")
+    }
     // The String overload of BasicTextField throws the caret position away whenever
     // the caller hands the text back, so the caret landed at index 0 on the first tap
     // and a second tap was needed to place it. Keep a TextFieldValue instead and only
@@ -143,19 +142,6 @@ fun MyTextField(
             enabled = enabled,
             modifier = Modifier
                 .weight(1f)
-                // onKeyEvent turns the node it sits on into a focus target. On the
-                // wrapping row that added a second focus target around the field, and
-                // the captured logcat shows the app calling hide(ime()) right before
-                // show(ime()) every time focus moved between two fields: focus landed on
-                // the row for a moment, the field lost it and the keyboard went down and
-                // up again. The text field is a focus target on its own, so Escape still
-                // clears focus from here.
-                .onKeyEvent {
-                    if (it.key == Key.Escape) {
-                        fm.clearFocus()
-                        true
-                    } else false
-                }
                 .focusRequester(focusRequester),
             textStyle = LocalTextStyle.current.merge(
                 TextStyle(
