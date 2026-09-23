@@ -40,7 +40,21 @@ jobs:
             android-debug-gradle-
 
       - name: Build Android debug APK
-        run: ./gradlew :android:app:assembleDebug --stacktrace
+        run: |
+          set +e
+          ./gradlew :android:app:assembleDebug --stacktrace 2>&1 | tee build.log
+          code=${PIPESTATUS[0]}
+          {
+            echo '## androidx.core 解析结果'
+            echo '````'
+            ./gradlew :android:app:dependencies --configuration debugCompileClasspath 2>/dev/null | grep -i 'androidx.core' | sort -u || echo 'no match'
+            echo '````'
+            echo '## Kotlin 错误行'
+            echo '````'
+            grep -E '^e: ' build.log | head -80 || echo 'none'
+            echo '````'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $code
 
       - name: Show built apks
         run: find android/app/build/outputs -name '*.apk' -print || true
