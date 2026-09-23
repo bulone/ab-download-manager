@@ -374,7 +374,26 @@ class HttpDownloadJob(
                         val inactivePart =
                             runCatching { mutableInactivePartDownloaderList.removeAt(0) }.getOrNull()
                         if (inactivePart != null) return inactivePart
-                        if (supportsConcurrent == true && downloadManager.settings.dynamicPartCreationMode) {
+                        // Stop splitting once only a little data is left overall.
+                        // Near the end dynamic splitting kept chopping the remainder into
+                        // ever smaller ranges, so the tail of a big download turned into
+                        // hundreds of tiny requests: throughput collapsed and the server
+                        // started refusing them (upstream issue #238).
+                        val remainingToSplit =
+                            getRequestedPartitionCount().toLong() * PartSplitSupport.SAFE_ZONE_SIZE * 2
+                        val totalRemaining = getPartDownloaderList()
+                            .sumOf { it.part.remainingLength ?: 0L }
+                        // Also cap the total number of parts. Without a cap a big file
+                        // ends up split into hundreds of one-megabyte pieces and every
+                        // piece costs a separate request, which is what made the tail
+                        // crawl and finally fail (upstream issue #238).
+                        val partCountLimit = getRequestedPartitionCount() * 4
+                        if (
+                            supportsConcurrent == true &&
+                            downloadManager.settings.dynamicPartCreationMode &&
+                            totalRemaining > remainingToSplit &&
+                            parts.size < partCountLimit
+                        ) {
                             synchronized(partSplitLock) {
                                 val candidates = getPartDownloaderList()
                                     .toList()

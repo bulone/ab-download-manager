@@ -65,6 +65,9 @@ class ABDMAppManager(
     fun boot() {
         booted.action {
             registerAsFallbackNotification()
+            // watch the work queue from the very first moment: the service is started
+            // and stopped based on it, not only from activity lifecycle callbacks
+            syncServiceWithWork()
         }
     }
 
@@ -305,16 +308,21 @@ class ABDMAppManager(
     }
 
     suspend fun startOurService() {
+        startOurServiceInternal()
+        syncServiceWithWork()
+    }
+
+    private suspend fun startOurServiceInternal() {
         awaitDownloadEngineBoot()
         val intent = Intent(context, DownloadSystemService::class.java)
         withContext(Dispatchers.Main) {
             ContextCompat.startForegroundService(context, intent)
         }
         DownloadSystemService.awaitStart()
-        autoStopService()
     }
 
     suspend fun stopOurService() {
+        if (!isBackgroundServiceRunning()) return
         awaitDownloadEngineBoot()
         val intent = Intent(context, DownloadSystemService::class.java)
         withContext(Dispatchers.Main) {
@@ -457,17 +465,30 @@ class ABDMAppManager(
         return@combine null
     }
 
-    private var autoStopServiceJob: Job? = null
+    private var serviceSyncJob: Job? = null
 
+    /**
+     * Keeps the foreground service in sync with the work that actually exists.
+     * The service stops itself when idle (same rule as 1DM+), so it also has to be
+     * started again the moment new work shows up - otherwise a download queued
+     * while the service was already stopped ran with no foreground service at all,
+     * and leaving the app let the process be killed mid-download.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private fun autoStopService() {
+    private fun syncServiceWithWork() {
         synchronized(this) {
-            autoStopServiceJob?.cancel()
-            autoStopServiceJob = scope.launch {
+            serviceSyncJob?.cancel()
+            serviceSyncJob = scope.launch {
                 mustStayAliveFlow
                     .distinctUntilChanged()
-                    .onEach {
-                        serviceNotificationManager.setKeepAliveServiceReason(it)
+                    .onEach { reason ->
+                        serviceNotificationManager.setKeepAliveServiceReason(reason)
+                        if (reason != null && !isBackgroundServiceRunning()) {
+                            scope.launch {
+                                runCatching { startOurServiceInternal() }
+                                    .onFailure { it.printStackTrace() }
+                            }
+                        }
                     }
                     .flatMapLatest {
                         if (it == null) flow {
