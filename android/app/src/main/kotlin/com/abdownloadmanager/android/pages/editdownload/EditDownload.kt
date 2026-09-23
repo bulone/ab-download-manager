@@ -125,7 +125,7 @@ fun ResponsiveDialogScope.EditDownloadPage(
                     text = downloadPageCredentials.downloadPage.orEmpty(),
                     setText = { pageLink ->
                         downloadInputs.credentials.value = downloadPageCredentials.copy(
-                            downloadPage = Some(pageLink.ifBlank { null })
+                            downloadPage = Some(pageLink.takeIf { it.isNotBlank() })
                         )
                     },
                 )

@@ -113,7 +113,7 @@ fun ResponsiveDialogScope.AddSingleDownloadPage(
                         setText = { pageLink ->
                             component.setCredentials(
                                 credentials.copy(
-                                    downloadPage = Some(pageLink.ifBlank { null })
+                                    downloadPage = Some(pageLink.takeIf { it.isNotBlank() })
                                 )
                             )
                         },
