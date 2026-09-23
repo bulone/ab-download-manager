@@ -22,13 +22,16 @@ class AndroidFileUtil : FileUtilsBase(), KoinComponent {
             ?: "*/*"
 
 
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, mimeType)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
+        // getUriForFile has to live inside runCatching as well: it throws
+        // IllegalArgumentException when the file sits outside the FileProvider roots,
+        // and that exception used to escape without anything being shown to the user.
         return runCatching {
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, mimeType)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
             context.startActivity(intent)
             true
         }

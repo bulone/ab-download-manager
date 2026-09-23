@@ -72,10 +72,17 @@ class AddSingleDownloadActivity : ABDMActivity() {
                 context = applicationContext,
             )
             val closeAddDownloadDialog = {
-                // same reason as in SingleDownloadPageActivity: the effect is not delivered when
-                // the composable is already gone, which left this dialog frozen on screen
+                // finish directly instead of via the effect channel: that effect is not delivered
+                // when the composable is already gone, which left the dialog frozen on screen.
+                // Opened from outside the app this dialog lives in a task of its own
+                // (AddDownloadActivity uses taskAffinity=""), so a plain finish() left the
+                // now-empty task sitting on screen; finishAndRemoveTask() tears it down.
                 this@AddSingleDownloadActivity.runOnUiThread {
-                    this@AddSingleDownloadActivity.finish()
+                    if (fromExternal) {
+                        this@AddSingleDownloadActivity.finishAndRemoveTask()
+                    } else {
+                        this@AddSingleDownloadActivity.finish()
+                    }
                 }
             }
             AndroidAddSingleDownloadComponent(
