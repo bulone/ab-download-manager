@@ -5,6 +5,9 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import arrow.core.None
+import arrow.core.Some
+import com.abdownloadmanager.android.pages.add.multiple.AddMultiDownloadActivity
 import com.abdownloadmanager.android.pages.browser.BrowserActivity
 import com.abdownloadmanager.android.pages.category.CategorySheet
 import com.abdownloadmanager.android.pages.newqueue.NewQueueSheet
@@ -20,9 +23,11 @@ import com.abdownloadmanager.android.util.pagemanager.AndroidDownloadErrorPageMa
 import com.abdownloadmanager.shared.downloaderinui.DownloaderInUiRegistry
 import com.abdownloadmanager.shared.pages.adddownload.AddDownloadConfig
 import com.abdownloadmanager.shared.pages.adddownload.AddDownloadCredentialsInUiProps
+import com.abdownloadmanager.shared.pages.adddownload.ImportOptions
 import com.abdownloadmanager.shared.storage.ILastSavedLocationsStorage
 import com.abdownloadmanager.shared.storage.ISelectQueueStorage
 import com.abdownloadmanager.shared.util.DownloadSystem
+import com.abdownloadmanager.shared.util.extractors.linkextractor.DefaultDownloadCredentialsExtractor
 import com.abdownloadmanager.shared.util.FileIconProvider
 import com.abdownloadmanager.shared.util.OnFullyDismissed
 import com.abdownloadmanager.shared.util.ResponsiveDialog
@@ -30,6 +35,7 @@ import com.abdownloadmanager.shared.util.category.CategoryManager
 import com.abdownloadmanager.shared.util.mvi.HandleEffects
 import com.abdownloadmanager.shared.util.rememberChild
 import com.abdownloadmanager.shared.util.rememberResponsiveDialogState
+import ir.amirab.downloader.downloaditem.IDownloadCredentials
 import ir.amirab.downloader.downloaditem.http.HttpDownloadCredentials
 import ir.amirab.downloader.queue.QueueManager
 import kotlinx.coroutines.delay
@@ -53,7 +59,15 @@ class AddSingleDownloadActivity : ABDMActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val fromExternal = intent.getBooleanExtra(EXTRA_FROM_EXTERNAL, false)
+        // started straight from a share sheet / SEND intent counts as external too
+        val fromExternal = intent.getBooleanExtra(EXTRA_FROM_EXTERNAL, false) ||
+            intent.action == Intent.ACTION_SEND ||
+            intent.action == Intent.ACTION_SENDTO
+        // Several links shared at once go straight to the multi page instead of
+        // building the single dialog first only to finish it a frame later
+        if (redirectToMultiDownloadIfNeeded()) {
+            return
+        }
         val myRetainedComponent = myRetainedComponent {
             // TODO consider use a factory to create AndroidAddSingleDownloadComponent
             // we may create memory leaks if we accidentally pass Activity::this into the component lambdas
@@ -204,14 +218,77 @@ class AddSingleDownloadActivity : ABDMActivity() {
         }.getOrNull()?.let {
             return it
         }
-        val link = intent.data?.toString().orEmpty()
+        // No serialized config means we were started directly from outside (share
+        // sheet, SEND/SENDTO/VIEW). Parse the intent right here instead of bouncing
+        // through another activity first - 1DM+ does the same, its dialog activity
+        // *is* the external entry point.
+        val credentials = extractExternalCredentials(intent)
+        val firstCredential = credentials.firstOrNull()
+            ?: HttpDownloadCredentials(intent.data?.toString().orEmpty())
         return AddDownloadConfig.SingleAddConfig(
-            newDownload = AddDownloadCredentialsInUiProps(
-                credentials = HttpDownloadCredentials(
-                    link = link,
-                )
+            newDownload = createDownloaderInUiProps(firstCredential),
+        )
+    }
+
+    private fun redirectToMultiDownloadIfNeeded(): Boolean {
+        val hasConfig = runCatching {
+            with(json) {
+                intent.getSerializedExtra<AddDownloadConfig.SingleAddConfig>(COMPONENT_CONFIG_KEY)
+            }
+        }.getOrNull() != null
+        if (hasConfig) return false
+        val credentials = extractExternalCredentials(intent)
+        if (credentials.size <= 1) return false
+        startActivity(
+            AddMultiDownloadActivity.createIntent(
+                this,
+                AddDownloadConfig.MultipleAddConfig(
+                    newDownloads = credentials.map(::createDownloaderInUiProps),
+                    importOptions = ImportOptions(),
+                ),
+                json = json,
             )
         )
+        finish()
+        return true
+    }
+
+    private fun createDownloaderInUiProps(
+        credentials: IDownloadCredentials,
+    ): AddDownloadCredentialsInUiProps {
+        return AddDownloadCredentialsInUiProps(
+            credentials,
+            AddDownloadCredentialsInUiProps.Configs(),
+        )
+    }
+
+    private fun extractExternalCredentials(intent: Intent): List<IDownloadCredentials> {
+        val links = when (intent.action) {
+            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
+            else -> intent.data?.toString().orEmpty()
+        }
+        // browsers pass something like "android-app://com.android.chrome/" as referrer,
+        // useless as an http Referer, so only accept real http(s) urls
+        val referrerUrl = listOfNotNull(
+            intent.getStringExtra(Intent.EXTRA_REFERRER_NAME),
+            referrer?.toString(),
+        ).firstOrNull {
+            it.startsWith("http://", ignoreCase = true) ||
+                it.startsWith("https://", ignoreCase = true)
+        }
+        return DefaultDownloadCredentialsExtractor
+            .extract(links)
+            .distinctBy { it.link }
+            .map { credentials ->
+                if (referrerUrl == null) {
+                    credentials
+                } else {
+                    credentials.copy(
+                        link = None,
+                        downloadPage = Some(referrerUrl),
+                    )
+                }
+            }
     }
 
     companion object {

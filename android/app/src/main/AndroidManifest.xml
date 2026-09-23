@@ -85,12 +85,26 @@
                 android:taskAffinity=""
         />
 
+        <!-- External entry, shaped like 1DM+: the dialog activity itself is the entry
+             point, so no forwarding activity sits in between. It parses the intent
+             (SEND / SENDTO / VIEW) on its own when there is no serialized config. -->
         <activity
                 android:name=".pages.add.single.AddSingleDownloadActivity"
-                android:exported="false"
+                android:exported="true"
                 android:theme="@style/Theme.ABDownloadManager.Transparent"
                 android:windowSoftInputMode="adjustResize"
-        />
+        >
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SENDTO"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
+        </activity>
 
         <activity
                 android:name=".pages.add.multiple.AddMultiDownloadActivity"

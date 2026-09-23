@@ -443,8 +443,7 @@ class ABDMAppManager(
         downloadSystem.downloadMonitor.activeDownloadCount,
         downloadSystem.queueManager.activeQueuesFlow(),
         downloadSystem.queueManager.queueModelsFlow(),
-        ApplicationBackgroundTracker.isInBackgroundFlow,
-    ) { activeDownloads, activeQueues, queueModels, isInBackground ->
+    ) { activeDownloads, activeQueues, queueModels ->
         if (activeQueues.isNotEmpty()) {
             return@combine KeepAliveServiceReason.ActiveQueue(activeQueues.map { it.getQueueModel() })
         }
@@ -454,9 +453,6 @@ class ABDMAppManager(
         val scheduledTimeQueue = queueModels.filter { it.scheduledTimes.enabledStartTime }
         if (scheduledTimeQueue.isNotEmpty()) {
             return@combine KeepAliveServiceReason.ScheduledQueues(scheduledTimeQueue)
-        }
-        if (!isInBackground) {
-            return@combine KeepAliveServiceReason.AppIsInForeground
         }
         return@combine null
     }
