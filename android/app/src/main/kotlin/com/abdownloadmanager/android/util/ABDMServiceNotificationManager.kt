@@ -216,6 +216,7 @@ class ABDMServiceNotificationManager(
             .setShowWhen(false)
             .setWhen(notificationCreationTime)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setRequestPromotedOngoing(true)
             // prevent delete by user until we are active
             .setDeleteIntent(
                 PendingIntent.getBroadcast(
@@ -279,6 +280,17 @@ class ABDMServiceNotificationManager(
             .setContentText(statusString)
             .setSubText(percent)
             .setProgress(100, downloadItemState.percent ?: 0, downloadItemState.percent == null)
+            .setStyle(
+                NotificationCompat.ProgressStyle().apply {
+                    val progressValue = downloadItemState.percent
+                    if (progressValue == null) {
+                        setProgressIndeterminate(true)
+                    } else {
+                        setProgress(progressValue)
+                    }
+                }
+            )
+            .setRequestPromotedOngoing(true)
             .setCategory(Notification.CATEGORY_PROGRESS)
             .setSmallIcon(R.drawable.ic_monochrome)
 //            .setGroup(DOWNLOAD_GROUP_NAME)
