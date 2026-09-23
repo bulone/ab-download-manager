@@ -48,6 +48,7 @@ android {
 
 dependencies {
     implementation(libs.compose.runtime)
+    implementation(libs.androidx.core.ktx)
     implementation(libs.compose.foundation)
     implementation(libs.androidx.activity.compose)
     implementation(libs.decompose.jbCompose)
