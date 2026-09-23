@@ -17,7 +17,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -34,7 +36,9 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.takeOrElse
@@ -68,6 +72,23 @@ fun MyTextField(
     val focusRequester = remember { FocusRequester() }
     val fm = LocalFocusManager.current
     val isFocused by interactionSource.collectIsFocusedAsState()
+    // The String overload of BasicTextField throws the caret position away whenever
+    // the caller hands the text back, so the caret landed at index 0 on the first tap
+    // and a second tap was needed to place it. Keep a TextFieldValue instead and only
+    // adopt external text changes, preserving the selection.
+    var fieldValue by remember {
+        mutableStateOf(TextFieldValue(text, TextRange(text.length)))
+    }
+    if (fieldValue.text != text) {
+        val selection = fieldValue.selection
+        fieldValue = TextFieldValue(
+            text = text,
+            selection = TextRange(
+                selection.start.coerceAtMost(text.length),
+                selection.end.coerceAtMost(text.length),
+            ),
+        )
+    }
 
     val textSize = fontSize.takeOrElse { LocalTextStyle.current.fontSize }
     Row(
@@ -93,7 +114,12 @@ fun MyTextField(
                 indication = null,
                 interactionSource = null,
             ) {
-                focusRequester.requestFocus()
+                // Only grab focus when we do not have it yet. Re-requesting it on every
+                // tap fought with the text field's own caret placement, which made the
+                // keyboard close and reopen and resized the window on each tap.
+                if (!isFocused) {
+                    focusRequester.requestFocus()
+                }
             }
             .border(
                 1.dp,
@@ -113,11 +139,14 @@ fun MyTextField(
         }
 
         BasicTextField(
-            value = text,
+            value = fieldValue,
             singleLine = singleLine,
             maxLines = maxLines,
             minLines = minLines,
-            onValueChange = onTextChange,
+            onValueChange = {
+                fieldValue = it
+                onTextChange(it.text)
+            },
             interactionSource = interactionSource,
             enabled = enabled,
             modifier = Modifier
