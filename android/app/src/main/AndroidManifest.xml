@@ -81,6 +81,9 @@
                 android:name=".pages.add.AddDownloadActivity"
                 android:exported="true"
                 android:theme="@style/Theme.ABDownloadManager.Transparent"
+                android:noHistory="true"
+                android:excludeFromRecents="true"
+                android:taskAffinity=""
         />
 
         <activity
