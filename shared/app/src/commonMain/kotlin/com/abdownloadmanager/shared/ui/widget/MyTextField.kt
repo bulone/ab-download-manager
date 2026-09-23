@@ -112,12 +112,6 @@ fun MyTextField(
                 if (enabled) PointerIcon.Text
                 else PointerIcon.Default
             )
-            .onKeyEvent {
-                if (it.key == Key.Escape) {
-                    fm.clearFocus()
-                    true
-                } else false
-            }
             .border(
                 1.dp,
                 animateColorAsState(
@@ -149,6 +143,19 @@ fun MyTextField(
             enabled = enabled,
             modifier = Modifier
                 .weight(1f)
+                // onKeyEvent turns the node it sits on into a focus target. On the
+                // wrapping row that added a second focus target around the field, and
+                // the captured logcat shows the app calling hide(ime()) right before
+                // show(ime()) every time focus moved between two fields: focus landed on
+                // the row for a moment, the field lost it and the keyboard went down and
+                // up again. The text field is a focus target on its own, so Escape still
+                // clears focus from here.
+                .onKeyEvent {
+                    if (it.key == Key.Escape) {
+                        fm.clearFocus()
+                        true
+                    } else false
+                }
                 .focusRequester(focusRequester),
             textStyle = LocalTextStyle.current.merge(
                 TextStyle(

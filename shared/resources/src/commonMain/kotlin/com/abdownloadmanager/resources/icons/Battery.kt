@@ -1,8 +1,9 @@
 package com.abdownloadmanager.resources.icons
 
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
@@ -19,24 +20,28 @@ val ABDMIcons.Battery: ImageVector
             viewportWidth = 24f,
             viewportHeight = 24f
         ).apply {
+            // outline only: stroke instead of fill, so it reads as a line-style icon
             path(
-                fill = SolidColor(Color.White),
-                pathFillType = PathFillType.EvenOdd
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 1.8f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
             ) {
                 // cap sitting on top of the body
-                moveTo(10f, 2f)
-                lineTo(14f, 2f)
-                lineTo(14f, 4f)
-                // body, rounded corners
-                lineTo(15.67f, 4f)
-                quadTo(17f, 4f, 17f, 5.33f)
-                lineTo(17f, 20.67f)
-                quadTo(17f, 22f, 15.67f, 22f)
-                lineTo(8.33f, 22f)
-                quadTo(7f, 22f, 7f, 20.67f)
-                lineTo(7f, 5.33f)
-                quadTo(7f, 4f, 8.33f, 4f)
-                lineTo(10f, 4f)
+                moveTo(10f, 5f)
+                lineTo(10f, 2.5f)
+                lineTo(14f, 2.5f)
+                lineTo(14f, 5f)
+                // body with rounded corners
+                moveTo(9f, 5f)
+                lineTo(15f, 5f)
+                quadTo(17f, 5f, 17f, 7f)
+                lineTo(17f, 20f)
+                quadTo(17f, 22f, 15f, 22f)
+                lineTo(9f, 22f)
+                quadTo(7f, 22f, 7f, 20f)
+                lineTo(7f, 7f)
+                quadTo(7f, 5f, 9f, 5f)
                 close()
             }
         }.build()
