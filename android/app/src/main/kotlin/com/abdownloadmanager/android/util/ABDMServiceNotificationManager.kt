@@ -169,8 +169,6 @@ class ABDMServiceNotificationManager(
                             }.onFailure {
                                 it.printStackTrace()
                             }
-                            delay(5.seconds)
-                            runCatching { notificationManagerCompat.cancel(finishedId) }
                         }
                     }
                 }
