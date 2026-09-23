@@ -281,12 +281,12 @@ class ABDMServiceNotificationManager(
             .setSubText(percent)
             .setProgress(100, downloadItemState.percent ?: 0, downloadItemState.percent == null)
             .setStyle(
-                NotificationCompat.ProgressStyle().run {
+                NotificationCompat.ProgressStyle().also { style ->
                     val progressValue = downloadItemState.percent
                     if (progressValue == null) {
-                        setProgressIndeterminate(true)
+                        style.setProgressIndeterminate(true)
                     } else {
-                        setProgress(progressValue)
+                        style.setProgress(progressValue)
                     }
                 }
             )
