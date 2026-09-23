@@ -9,7 +9,6 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.*
@@ -35,7 +34,6 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
@@ -81,11 +79,13 @@ fun MyTextField(
     var fieldValue by remember {
         mutableStateOf(TextFieldValue(text, TextRange(text.length)))
     }
+    // Track the text we handed out last so an echo of our own edit can be told apart
+    // from a value the caller pushes (initial load, prettify, clamp). A pushed value
+    // used to keep selection 0, so the caret sat before the text and a second tap was
+    // needed to place it.
+    var lastEmittedText by remember { mutableStateOf(text) }
     if (fieldValue.text != text) {
-        // Not focused means the caller pushed a new value (initial load, prettify,
-        // clamp). Park the caret at the end so the first tap does not land before the
-        // text. While editing keep the user's caret, only clamped to the new length.
-        val selection = if (isFocused) {
+        val selection = if (text == lastEmittedText) {
             val current = fieldValue.selection
             TextRange(
                 current.start.coerceAtMost(text.length),
@@ -95,6 +95,7 @@ fun MyTextField(
             TextRange(text.length)
         }
         fieldValue = TextFieldValue(text = text, selection = selection)
+        lastEmittedText = text
     }
 
     val textSize = fontSize.takeOrElse { LocalTextStyle.current.fontSize }
@@ -116,18 +117,6 @@ fun MyTextField(
                     fm.clearFocus()
                     true
                 } else false
-            }
-            // pointerInput instead of clickable: clickable adds a focusable node, so
-            // tapping the padding pulled focus out of the text field (keyboard closed)
-            // and this handler immediately asked for it back (keyboard opened), which
-            // resized the window twice and made the page twitch on every tap.
-            .pointerInput(enabled) {
-                if (!enabled) return@pointerInput
-                detectTapGestures {
-                    if (!isFocused) {
-                        focusRequester.requestFocus()
-                    }
-                }
             }
             .border(
                 1.dp,
@@ -153,13 +142,13 @@ fun MyTextField(
             minLines = minLines,
             onValueChange = {
                 fieldValue = it
+                lastEmittedText = it.text
                 onTextChange(it.text)
             },
             interactionSource = interactionSource,
             enabled = enabled,
             modifier = Modifier
                 .weight(1f)
-                .padding(textPadding)
                 .focusRequester(focusRequester),
             textStyle = LocalTextStyle.current.merge(
                 TextStyle(
@@ -169,11 +158,13 @@ fun MyTextField(
                     fontSize = fontSize
                 )
             ),
-            decorationBox = {
-                Box {
+            decorationBox = { innerTextField ->
+                // The padding lives here, not on the text field, so the field's own
+                // bounds cover it and a tap on the padding focuses the field and places
+                // the caret by itself - no parent tap handler to fight over focus.
+                Box(Modifier.padding(textPadding)) {
                     androidx.compose.animation.AnimatedVisibility(
                         text.isEmpty(),
-//                modifier = Modifier.matchParentSize(),
                         enter = fadeIn(),
                         exit = fadeOut(),
                     ) {
@@ -184,7 +175,7 @@ fun MyTextField(
                             fontSize = textSize
                         )
                     }
-                    it()
+                    innerTextField()
                 }
             },
             cursorBrush = SolidColor(myColors.primary),
