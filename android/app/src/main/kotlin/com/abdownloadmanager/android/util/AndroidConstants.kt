@@ -24,6 +24,11 @@ object AndroidConstants {
 
         // download id
         const val TOGGLE_DOWNLOAD_ACTION_DOWNLOAD_ID = "downloadId"
+
+        // the finished-download "Open" action carries the file location so that the
+        // manifest receiver can open it without the download database being open
+        const val EXTRA_FILE_FOLDER = "abdm.file.folder"
+        const val EXTRA_FILE_NAME = "abdm.file.name"
         const val EXIT_ACTION = prefix + "EXIT"
     }
 

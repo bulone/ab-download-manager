@@ -279,8 +279,8 @@ class ABDMServiceNotificationManager(
         val openSingleDownloadActivityIntent = PendingIntent.getActivity(
             context,
             AndroidConstants.SERVICE_NOTIFICATION_ID,
-            SingleDownloadPageActivity.createIntent(
-                context, downloadItemState.id, true
+            MainActivity.createRevelDownloadIntent(
+                context, downloadItemState.id
             ),
             flagOfPendingIntent
         )
@@ -299,6 +299,26 @@ class ABDMServiceNotificationManager(
                     } else {
                         style.setProgress(progressValue)
                     }
+                    // text shown next to the icon inside the status-bar chip
+                    style.setShortCriticalText(
+                        when {
+                            downloadItemState.isWaiting ->
+                                Res.string.waiting.asStringSource().getString()
+
+                            // Canceled and IDLE both implement CanBeResumed, so they
+                            // have to be told apart before the shared supertype check
+                            downloadItemState.status is DownloadJobStatus.Canceled ->
+                                Res.string.canceled.asStringSource().getString()
+
+                            downloadItemState.status is DownloadJobStatus.IDLE ->
+                                Res.string.paused.asStringSource().getString()
+
+                            progressValue != null -> "$progressValue%"
+
+                            else ->
+                                Res.string.downloading.asStringSource().getString()
+                        }
+                    )
                 }
             )
             .setRequestPromotedOngoing(true)
@@ -377,8 +397,8 @@ class ABDMServiceNotificationManager(
         val openSingleDownloadActivityIntent = PendingIntent.getActivity(
             context,
             AndroidConstants.SERVICE_NOTIFICATION_ID,
-            SingleDownloadPageActivity.createIntent(
-                context, downloadItemState.id, true
+            MainActivity.createRevelDownloadIntent(
+                context, downloadItemState.id
             ),
             flagOfPendingIntent
         )
@@ -397,13 +417,23 @@ class ABDMServiceNotificationManager(
                     setWhen(it)
                 }
             }
-            .setStyle(NotificationCompat.BigTextStyle().bigText(statusString))
+            // ProgressStyle, not BigTextStyle: only the live-update styles expose
+            // setShortCriticalText, which is what the status-bar chip shows
+            .setStyle(
+                NotificationCompat.ProgressStyle().also { style ->
+                    style.setProgress(100)
+                    style.setShortCriticalText(Res.string.finished.asStringSource().getString())
+                }
+            )
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(openSingleDownloadActivityIntent)
             .addAction(0, Res.string.open.asStringSource().getString(), PendingIntent.getBroadcast(
                 context, AndroidConstants.SERVICE_NOTIFICATION_ID,
-                Intent(AndroidConstants.Intents.OPEN_FILE_ACTION).apply {
+                Intent(context, com.abdownloadmanager.android.receiver.NotificationActionReceiver::class.java).apply {
+                    action = AndroidConstants.Intents.OPEN_FILE_ACTION
                     putExtra(AndroidConstants.Intents.TOGGLE_DOWNLOAD_ACTION_DOWNLOAD_ID, downloadItemState.id)
+                    putExtra(AndroidConstants.Intents.EXTRA_FILE_FOLDER, downloadItemState.folder)
+                    putExtra(AndroidConstants.Intents.EXTRA_FILE_NAME, downloadItemState.name)
                 }, flagOfPendingIntent))
             .addAction(0, Res.string.close.asStringSource().getString(), PendingIntent.getBroadcast(
                 context, AndroidConstants.SERVICE_NOTIFICATION_ID,

@@ -119,6 +119,15 @@
                 android:foregroundServiceType="specialUse"
         />
 
+        <!-- The finished-download notification outlives the app process, so its "Open"
+             action has to be handled by a manifest-declared receiver: the dynamically
+             registered one in ABDMAppManager dies together with the process, which made
+             the button do nothing at all. The notification targets this receiver
+             explicitly, so no intent-filter is needed. -->
+        <receiver
+                android:name=".receiver.NotificationActionReceiver"
+                android:exported="false"
+        />
         <receiver
                 android:name=".receiver.StartOnBootBroadcastReceiver"
                 android:enabled="false"
