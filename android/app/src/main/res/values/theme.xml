@@ -5,7 +5,10 @@
     </style>
     <style name="Theme.ABDownloadManager.Transparent" parent="Theme.ABDownloadManager">
         <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
+        <!-- not fully transparent: when this activity is the root of its own task
+             (opened from a notification, or restored from recents) there is nothing
+             behind it to show through and the window renders as solid black -->
+        <item name="android:windowBackground">#99000000</item>
         <item name="android:windowContentOverlay">@null</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:backgroundDimEnabled">false</item>

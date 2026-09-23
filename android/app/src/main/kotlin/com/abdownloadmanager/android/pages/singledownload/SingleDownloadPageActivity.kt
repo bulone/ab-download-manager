@@ -28,7 +28,12 @@ class SingleDownloadPageActivity : ABDMActivity() {
         val isComingFromOutside = isComingFromExternalApplication(intent)
         val myRetainedComponent = myRetainedComponent {
             val closeAddDownloadDialog = {
-                this@myRetainedComponent.finishActivityAction()
+                // finish directly instead of via the effect channel: the FinishActivity effect is
+                // only consumed while the composable is alive, so dismissing the dialog after the
+                // activity had been backgrounded left it stuck on screen (black + frozen)
+                this@SingleDownloadPageActivity.runOnUiThread {
+                    this@SingleDownloadPageActivity.finish()
+                }
             }
             val downloadErrorPageManager = AndroidDownloadErrorPageManager(
                 openIntent = {

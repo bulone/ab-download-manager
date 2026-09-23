@@ -72,7 +72,11 @@ class AddSingleDownloadActivity : ABDMActivity() {
                 context = applicationContext,
             )
             val closeAddDownloadDialog = {
-                this@myRetainedComponent.finishActivityAction()
+                // same reason as in SingleDownloadPageActivity: the effect is not delivered when
+                // the composable is already gone, which left this dialog frozen on screen
+                this@AddSingleDownloadActivity.runOnUiThread {
+                    this@AddSingleDownloadActivity.finish()
+                }
             }
             AndroidAddSingleDownloadComponent(
                 ctx = it,
@@ -100,7 +104,9 @@ class AddSingleDownloadActivity : ABDMActivity() {
                         // that effect is only consumed while the composable is alive, so
                         // when the download took a while this activity was left in the
                         // back stack and later popped up as a stale "downloading" page.
-                        runOnUiThread { finish() }
+                        // finishAndRemoveTask, not plain finish(): the external-add task has to
+                        // leave the recents list the moment the download is queued
+                        runOnUiThread { finishAndRemoveTask() }
                     }
                 },
                 onRequestAddToQueue = { item, queue, category ->
