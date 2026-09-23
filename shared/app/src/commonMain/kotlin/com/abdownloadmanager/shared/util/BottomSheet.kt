@@ -9,6 +9,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.SoftwareKeyboardController
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.abdownloadmanager.shared.util.ui.widget.MPBackHandler
 import ir.amirab.util.compose.modifiers.hijackClick
 import ir.amirab.util.compose.modifiers.silentClickable
@@ -148,6 +156,37 @@ private fun CustomSheet(
     LaunchedEffect(originalTransition.targetState) {
         isVisible = originalTransition.targetState
     }
+    // Compose asks the keyboard to hide whenever a text field loses focus, and this device
+    // runs that hide to completion before the show that follows a few milliseconds later:
+    // ~260ms with the keyboard off screen on every switch between fields. Both calls go
+    // through SoftwareKeyboardController, so the hide is held back briefly and dropped if a
+    // show arrives in the meantime - which is exactly the "focus moved to another field"
+    // case. A genuine hide (tap outside, sheet closes) is only delayed by that grace period.
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val keyboardScope = rememberCoroutineScope()
+    val pendingHide = remember { PendingHide() }
+    val guardedKeyboardController = remember(keyboardController) {
+        object : SoftwareKeyboardController {
+            override fun show() {
+                if (pendingHide.job != null) {
+                    debugTrace("ABDM_KB", "show() - dropped the pending hide")
+                    pendingHide.job?.cancel()
+                    pendingHide.job = null
+                }
+                keyboardController?.show()
+            }
+
+            override fun hide() {
+                pendingHide.job?.cancel()
+                pendingHide.job = keyboardScope.launch {
+                    delay(KEYBOARD_HIDE_GRACE_MILLIS)
+                    pendingHide.job = null
+                    debugTrace("ABDM_KB", "hide() - grace period passed, hiding")
+                    keyboardController?.hide()
+                }
+            }
+        }
+    }
     val responsiveSize = rememberResponsiveWidth()
     Box(
         modifier.fillMaxSize(),
@@ -199,10 +238,20 @@ private fun CustomSheet(
                 .align(alignment)
                 .hijackClick()
         ) {
-            MPBackHandler(onBack = onDismiss)
-            Box(Modifier) {
-                content(responsiveDialogScope)
+            CompositionLocalProvider(
+                LocalSoftwareKeyboardController provides guardedKeyboardController
+            ) {
+                MPBackHandler(onBack = onDismiss)
+                Box(Modifier) {
+                    content(responsiveDialogScope)
+                }
             }
         }
     }
+}
+
+private const val KEYBOARD_HIDE_GRACE_MILLIS = 120L
+
+private class PendingHide {
+    var job: Job? = null
 }

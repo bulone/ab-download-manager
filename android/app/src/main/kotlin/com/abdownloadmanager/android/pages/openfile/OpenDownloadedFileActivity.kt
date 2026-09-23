@@ -67,6 +67,10 @@ class OpenDownloadedFileActivity : Activity() {
             notificationId: Int,
         ): Intent {
             return Intent(context, OpenDownloadedFileActivity::class.java).apply {
+                // The pending intent is fired from a non-activity context, so NEW_TASK is
+                // forced; together with the empty taskAffinity in the manifest that lands
+                // in a task of its own instead of the app's.
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 putExtra(AndroidConstants.Intents.EXTRA_FILE_FOLDER, folder)
                 putExtra(AndroidConstants.Intents.EXTRA_FILE_NAME, name)
                 putExtra(EXTRA_NOTIFICATION_ID, notificationId)

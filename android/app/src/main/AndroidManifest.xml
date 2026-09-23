@@ -145,11 +145,18 @@
         <!-- Open goes through this activity rather than a receiver: a receiver may not
              start an activity from the background (Android 10+), and the block is silent,
              which is why the finished-download Open button did nothing. -->
+        <!-- taskAffinity="" keeps this from dragging the app's own task to the front.
+             Without it the activity joins the ABDM task (its affinity is the package
+             name), so tapping Open brought MainActivity/AddSingleDownload back to the
+             foreground - the log shows both becoming visible the moment this activity
+             started. With no affinity it gets a task of its own and only the viewer
+             comes up. -->
         <activity
                 android:name=".pages.openfile.OpenDownloadedFileActivity"
                 android:exported="false"
                 android:excludeFromRecents="true"
                 android:noHistory="true"
+                android:taskAffinity=""
                 android:theme="@style/Theme.ABDownloadManager.Transparent"
         />
         <receiver
