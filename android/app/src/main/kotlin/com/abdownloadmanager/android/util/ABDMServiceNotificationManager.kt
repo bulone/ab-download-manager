@@ -434,14 +434,18 @@ class ABDMServiceNotificationManager(
             .setShortCriticalText(Res.string.finished.asStringSource().getString())
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(openSingleDownloadActivityIntent)
-            .addAction(0, Res.string.open.asStringSource().getString(), PendingIntent.getBroadcast(
+            // getActivity, not getBroadcast: since Android 10 a broadcast receiver may
+            // not start an activity and the system blocks it silently (no exception, no
+            // toast), which is why Open did nothing for files the system will not render
+            // by itself, like zip. A PendingIntent.getActivity is exempt from that rule,
+            // and this activity is what actually hands the file to the viewer.
+            .addAction(0, Res.string.open.asStringSource().getString(), PendingIntent.getActivity(
                 context, AndroidConstants.SERVICE_NOTIFICATION_ID,
-                Intent(context, com.abdownloadmanager.android.receiver.NotificationActionReceiver::class.java).apply {
-                    action = AndroidConstants.Intents.OPEN_FILE_ACTION
-                    putExtra(AndroidConstants.Intents.TOGGLE_DOWNLOAD_ACTION_DOWNLOAD_ID, downloadItemState.id)
-                    putExtra(AndroidConstants.Intents.EXTRA_FILE_FOLDER, downloadItemState.folder)
-                    putExtra(AndroidConstants.Intents.EXTRA_FILE_NAME, downloadItemState.name)
-                }, flagOfPendingIntent))
+                com.abdownloadmanager.android.pages.openfile.OpenDownloadedFileActivity.createIntent(
+                    context,
+                    downloadItemState.folder,
+                    downloadItemState.name,
+                ), flagOfPendingIntent))
             .addAction(0, Res.string.close.asStringSource().getString(), PendingIntent.getBroadcast(
                 context, AndroidConstants.SERVICE_NOTIFICATION_ID,
                 Intent(AndroidConstants.Intents.CLOSE_SERVICE_ACTION).apply {

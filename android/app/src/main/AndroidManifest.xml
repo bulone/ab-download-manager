@@ -142,6 +142,16 @@
                 android:name=".receiver.NotificationActionReceiver"
                 android:exported="false"
         />
+        <!-- Open goes through this activity rather than a receiver: a receiver may not
+             start an activity from the background (Android 10+), and the block is silent,
+             which is why the finished-download Open button did nothing. -->
+        <activity
+                android:name=".pages.openfile.OpenDownloadedFileActivity"
+                android:exported="false"
+                android:excludeFromRecents="true"
+                android:noHistory="true"
+                android:theme="@style/Theme.ABDownloadManager.Transparent"
+        />
         <receiver
                 android:name=".receiver.StartOnBootBroadcastReceiver"
                 android:enabled="false"

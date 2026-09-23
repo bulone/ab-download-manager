@@ -9,6 +9,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.*
@@ -34,6 +35,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
@@ -80,14 +82,19 @@ fun MyTextField(
         mutableStateOf(TextFieldValue(text, TextRange(text.length)))
     }
     if (fieldValue.text != text) {
-        val selection = fieldValue.selection
-        fieldValue = TextFieldValue(
-            text = text,
-            selection = TextRange(
-                selection.start.coerceAtMost(text.length),
-                selection.end.coerceAtMost(text.length),
-            ),
-        )
+        // Not focused means the caller pushed a new value (initial load, prettify,
+        // clamp). Park the caret at the end so the first tap does not land before the
+        // text. While editing keep the user's caret, only clamped to the new length.
+        val selection = if (isFocused) {
+            val current = fieldValue.selection
+            TextRange(
+                current.start.coerceAtMost(text.length),
+                current.end.coerceAtMost(text.length),
+            )
+        } else {
+            TextRange(text.length)
+        }
+        fieldValue = TextFieldValue(text = text, selection = selection)
     }
 
     val textSize = fontSize.takeOrElse { LocalTextStyle.current.fontSize }
@@ -110,15 +117,16 @@ fun MyTextField(
                     true
                 } else false
             }
-            .clickable(
-                indication = null,
-                interactionSource = null,
-            ) {
-                // Only grab focus when we do not have it yet. Re-requesting it on every
-                // tap fought with the text field's own caret placement, which made the
-                // keyboard close and reopen and resized the window on each tap.
-                if (!isFocused) {
-                    focusRequester.requestFocus()
+            // pointerInput instead of clickable: clickable adds a focusable node, so
+            // tapping the padding pulled focus out of the text field (keyboard closed)
+            // and this handler immediately asked for it back (keyboard opened), which
+            // resized the window twice and made the page twitch on every tap.
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
+                detectTapGestures {
+                    if (!isFocused) {
+                        focusRequester.requestFocus()
+                    }
                 }
             }
             .border(
