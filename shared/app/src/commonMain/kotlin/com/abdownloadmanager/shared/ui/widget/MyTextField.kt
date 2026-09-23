@@ -72,22 +72,6 @@ fun MyTextField(
 ) {
     val focusRequester = remember { FocusRequester() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    // temporary trace: remove once the keyboard flicker is gone.
-    // The enter/leave pair tells us whether the field is being disposed and rebuilt on
-    // every tap - a rebuild would drop the input session and therefore the keyboard.
-    val traceId = androidx.compose.runtime.remember { kotlin.random.Random.nextInt(1000, 9999) }
-    androidx.compose.runtime.DisposableEffect(Unit) {
-        com.abdownloadmanager.shared.util.debugTrace("ABDM_FOCUS", "#" + traceId + " enter")
-        onDispose {
-            com.abdownloadmanager.shared.util.debugTrace("ABDM_FOCUS", "#" + traceId + " leave")
-        }
-    }
-    androidx.compose.runtime.LaunchedEffect(isFocused) {
-        com.abdownloadmanager.shared.util.debugTrace(
-            "ABDM_FOCUS",
-            "#" + traceId + " focused=" + isFocused + " text='" + text + "'",
-        )
-    }
     // state-based BasicTextField: the input session is shared per window, so focus
     // moving between two fields no longer stops and restarts a session (the legacy
     // value/onValueChange overload did, and this device ran the hide(ime()) to

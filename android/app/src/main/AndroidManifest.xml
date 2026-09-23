@@ -91,7 +91,7 @@
         <activity
                 android:name=".pages.add.single.AddSingleDownloadActivity"
                 android:exported="true"
-                android:theme="@style/Theme.ABDownloadManager"
+                android:theme="@style/Theme.ABDownloadManager.Transparent"
                 android:windowSoftInputMode="adjustResize"
         >
             <intent-filter>
