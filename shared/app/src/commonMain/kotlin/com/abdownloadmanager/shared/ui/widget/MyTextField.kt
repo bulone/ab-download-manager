@@ -67,9 +67,21 @@ fun MyTextField(
 ) {
     val focusRequester = remember { FocusRequester() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    // temporary trace: remove once the keyboard flicker is gone
+    // temporary trace: remove once the keyboard flicker is gone.
+    // The enter/leave pair tells us whether the field is being disposed and rebuilt on
+    // every tap - a rebuild would drop the input session and therefore the keyboard.
+    val traceId = androidx.compose.runtime.remember { kotlin.random.Random.nextInt(1000, 9999) }
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        com.abdownloadmanager.shared.util.debugTrace("ABDM_FOCUS", "#" + traceId + " enter")
+        onDispose {
+            com.abdownloadmanager.shared.util.debugTrace("ABDM_FOCUS", "#" + traceId + " leave")
+        }
+    }
     androidx.compose.runtime.LaunchedEffect(isFocused) {
-        println("ABDM_FOCUS focused=$isFocused text=$text")
+        com.abdownloadmanager.shared.util.debugTrace(
+            "ABDM_FOCUS",
+            "#" + traceId + " focused=" + isFocused + " text='" + text + "'",
+        )
     }
     // The String overload of BasicTextField throws the caret position away whenever
     // the caller hands the text back, so the caret landed at index 0 on the first tap

@@ -34,12 +34,23 @@ fun ResponsiveDialog(
     val content by rememberUpdatedState(content)
     val enter by rememberUpdatedState(enter)
     val exit by rememberUpdatedState(exit)
+    // clearFocus() hides the keyboard, so it must only run when the dialog is actually
+    // asked to open. It used to sit inside PlaceInHost's content, which is re-entered
+    // whenever that content is rebuilt - and each rebuild cleared the focus again, which
+    // dropped the IME and brought it back while the user was only moving between the
+    // text fields inside the sheet.
+    val focusManager = LocalFocusManager.current
+    LaunchedEffect(state.targetIsOpened) {
+        debugTrace(
+            "ABDM_FOCUS",
+            "ResponsiveDialog clearFocus targetIsOpened=" + state.targetIsOpened,
+        )
+        if (state.targetIsOpened) {
+            focusManager.clearFocus()
+        }
+    }
     if (state.targetIsOpened || state.currentIsOpened) {
         PlaceInHost {
-            val focusManager = LocalFocusManager.current
-            LaunchedEffect(Unit) {
-                focusManager.clearFocus()
-            }
             CustomSheet(modifier, state, onDismiss, enter, exit, content)
         }
     }
