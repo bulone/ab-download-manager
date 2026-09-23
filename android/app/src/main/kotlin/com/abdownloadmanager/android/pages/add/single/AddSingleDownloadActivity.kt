@@ -92,10 +92,15 @@ class AddSingleDownloadActivity : ABDMActivity() {
                             }.onFailure {
                                 it.printStackTrace()
                             }
-                        } else {
-                            // external request: live notification takes over, close the dialog
-                            closeAddDownloadDialog()
                         }
+                    }
+                    if (fromExternal) {
+                        // external request: the live notification takes over.
+                        // finish() directly instead of going through the effect channel:
+                        // that effect is only consumed while the composable is alive, so
+                        // when the download took a while this activity was left in the
+                        // back stack and later popped up as a stale "downloading" page.
+                        runOnUiThread { finish() }
                     }
                 },
                 onRequestAddToQueue = { item, queue, category ->

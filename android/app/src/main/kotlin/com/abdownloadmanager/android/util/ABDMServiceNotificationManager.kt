@@ -108,6 +108,16 @@ class ABDMServiceNotificationManager(
         )
         notificationChanel.setShowBadge(false)
         notificationManagerCompat.createNotificationChannel(notificationChanel)
+
+        // keep-alive service notice lives in its own channel, so users can silence
+        // it without also silencing download progress (and vice versa)
+        val serviceChanel = NotificationChannel(
+            AndroidConstants.NOTIFICATION_SERVICE_CHANEL_ID,
+            AndroidConstants.NOTIFICATION_SERVICE_CHANEL_NAME,
+            NotificationManager.IMPORTANCE_LOW,
+        )
+        serviceChanel.setShowBadge(false)
+        notificationManagerCompat.createNotificationChannel(serviceChanel)
     }
 
     private val notificationUpdateSignal = MutableStateFlow(0)
@@ -207,7 +217,7 @@ class ABDMServiceNotificationManager(
             flagOfPendingIntent
         )
         return NotificationCompat
-            .Builder(context, AndroidConstants.NOTIFICATION_DOWNLOAD_CHANEL_ID)
+            .Builder(context, AndroidConstants.NOTIFICATION_SERVICE_CHANEL_ID)
             .setContentTitle(serviceIsRunningText)
             .setContentText(statusString)
             .setStyle(NotificationCompat.BigTextStyle().bigText(statusString))
@@ -220,7 +230,6 @@ class ABDMServiceNotificationManager(
             .setShowWhen(false)
             .setWhen(notificationCreationTime)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setRequestPromotedOngoing(true)
             // prevent delete by user until we are active
             .setDeleteIntent(
                 PendingIntent.getBroadcast(
@@ -381,7 +390,8 @@ class ABDMServiceNotificationManager(
             .setContentText(statusString)
             .setCategory(Notification.CATEGORY_EVENT)
             .setSmallIcon(R.drawable.ic_monochrome)
-            .setOngoing(false)
+            .setOngoing(true)
+            .setRequestPromotedOngoing(true)
             .setOnlyAlertOnce(true)
             .setShowWhen(true)
             .apply {

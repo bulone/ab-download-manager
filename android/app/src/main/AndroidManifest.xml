@@ -42,7 +42,6 @@
                 android:exported="true"
                 android:theme="@style/Theme.ABDownloadManager.Transparent"
                 android:windowSoftInputMode="adjustResize"
-                android:excludeFromRecents="true"
         />
         <activity
                 android:name=".pages.downloaderror.DownloadErrorActivity"
@@ -83,7 +82,6 @@
                 android:exported="true"
                 android:theme="@style/Theme.ABDownloadManager.Transparent"
                 android:noHistory="true"
-                android:excludeFromRecents="true"
                 android:taskAffinity=""
         />
 
@@ -92,7 +90,6 @@
                 android:exported="false"
                 android:theme="@style/Theme.ABDownloadManager.Transparent"
                 android:windowSoftInputMode="adjustResize"
-                android:excludeFromRecents="true"
         />
 
         <activity

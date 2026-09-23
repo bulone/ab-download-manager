@@ -5,6 +5,9 @@ object AndroidConstants {
     const val NOTIFICATION_DOWNLOAD_CHANEL_ID = "downloads"
     const val NOTIFICATION_DOWNLOAD_CHANEL_NAME = "Download Manager Service"
 
+    const val NOTIFICATION_SERVICE_CHANEL_ID = "service"
+    const val NOTIFICATION_SERVICE_CHANEL_NAME = "Download Service"
+
     const val NOTIFICATION_CRASH_REPORT_CHANEL_ID = "crashReport"
     const val NOTIFICATION_CRASH_REPORT_CHANEL_NAME = "Crash Report"
 
