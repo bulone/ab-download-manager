@@ -27,6 +27,7 @@ import ir.amirab.downloader.DownloadManagerEvents
 import ir.amirab.downloader.NewDownloadItemProps
 import ir.amirab.downloader.downloaditem.contexts.ResumedBy
 import ir.amirab.downloader.downloaditem.contexts.User
+import ir.amirab.downloader.downloaditem.contexts.RemovedBy
 import ir.amirab.downloader.queue.DefaultQueueInfo
 import ir.amirab.downloader.queue.activeQueuesFlow
 import ir.amirab.downloader.queue.queueModelsFlow
@@ -246,7 +247,7 @@ class ABDMAppManager(
                                     downloadSystem.removeDownload(
                                         id = it,
                                         alsoRemoveFile = true,
-                                        context = User,
+                                        context = RemovedBy(User),
                                     )
                                 }
                             }
