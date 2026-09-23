@@ -32,15 +32,17 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.edit
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.takeOrElse
 import com.abdownloadmanager.shared.util.ui.theme.myShapes
 import com.abdownloadmanager.shared.util.ui.theme.mySpacings
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun MyTextField(
     text: String,
@@ -83,30 +85,24 @@ fun MyTextField(
             "#" + traceId + " focused=" + isFocused + " text='" + text + "'",
         )
     }
-    // The String overload of BasicTextField throws the caret position away whenever
-    // the caller hands the text back, so the caret landed at index 0 on the first tap
-    // and a second tap was needed to place it. Keep a TextFieldValue instead and only
-    // adopt external text changes, preserving the selection.
-    var fieldValue by remember {
-        mutableStateOf(TextFieldValue(text, TextRange(text.length)))
-    }
-    // Track the text we handed out last so an echo of our own edit can be told apart
-    // from a value the caller pushes (initial load, prettify, clamp). A pushed value
-    // used to keep selection 0, so the caret sat before the text and a second tap was
-    // needed to place it.
+    // state-based BasicTextField: the input session is shared per window, so focus
+    // moving between two fields no longer stops and restarts a session (the legacy
+    // value/onValueChange overload did, and this device ran the hide(ime()) to
+    // completion before the show(ime()), dropping the keyboard for ~260ms per tap).
+    val state = rememberTextFieldState(text)
     var lastEmittedText by remember { mutableStateOf(text) }
-    if (fieldValue.text != text) {
-        val selection = if (text == lastEmittedText) {
-            val current = fieldValue.selection
-            TextRange(
-                current.start.coerceAtMost(text.length),
-                current.end.coerceAtMost(text.length),
-            )
-        } else {
-            TextRange(text.length)
+    androidx.compose.runtime.LaunchedEffect(text) {
+        if (text != state.text) {
+            state.edit { replace(0, length, text) }
         }
-        fieldValue = TextFieldValue(text = text, selection = selection)
-        lastEmittedText = text
+    }
+    androidx.compose.runtime.LaunchedEffect(state) {
+        androidx.compose.runtime.snapshotFlow { state.text }.collect { newText ->
+            if (newText != lastEmittedText) {
+                lastEmittedText = newText
+                onTextChange(newText)
+            }
+        }
     }
 
     val textSize = fontSize.takeOrElse { LocalTextStyle.current.fontSize }
@@ -141,14 +137,14 @@ fun MyTextField(
         }
 
         BasicTextField(
-            value = fieldValue,
-            singleLine = singleLine,
-            maxLines = maxLines,
-            minLines = minLines,
-            onValueChange = {
-                fieldValue = it
-                lastEmittedText = it.text
-                onTextChange(it.text)
+            state = state,
+            lineLimits = if (singleLine) {
+                TextFieldLineLimits.SingleLine
+            } else {
+                TextFieldLineLimits.MultiLine(
+                    minHeightInLines = minLines,
+                    maxHeightInLines = maxLines,
+                )
             },
             interactionSource = interactionSource,
             enabled = enabled,
@@ -169,7 +165,7 @@ fun MyTextField(
                 // the caret by itself - no parent tap handler to fight over focus.
                 Box(Modifier.padding(textPadding)) {
                     androidx.compose.animation.AnimatedVisibility(
-                        text.isEmpty(),
+                        state.text.isEmpty(),
                         enter = fadeIn(),
                         exit = fadeOut(),
                     ) {
