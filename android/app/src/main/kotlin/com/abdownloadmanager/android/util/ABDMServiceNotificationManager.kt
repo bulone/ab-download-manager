@@ -101,10 +101,17 @@ class ABDMServiceNotificationManager(
     }
 
     fun initNotificationChannel() {
+        // drop the old silent "downloads" channel: its importance can not be raised
+        // after creation, so download progress moved to a fresh channel id
+        notificationManagerCompat.deleteNotificationChannel("downloads")
+
+        // IMPORTANCE_DEFAULT instead of LOW so download notifications are no longer
+        // silent. The builders already set setOnlyAlertOnce(true), so progress updates
+        // on an existing notification still will not re-alert.
         val notificationChanel = NotificationChannel(
             AndroidConstants.NOTIFICATION_DOWNLOAD_CHANEL_ID,
             AndroidConstants.NOTIFICATION_DOWNLOAD_CHANEL_NAME,
-            NotificationManager.IMPORTANCE_LOW,
+            NotificationManager.IMPORTANCE_DEFAULT,
         )
         notificationChanel.setShowBadge(false)
         notificationManagerCompat.createNotificationChannel(notificationChanel)

@@ -7,7 +7,9 @@ import com.abdownloadmanager.shared.util.downloadlocation.PlatformDownloadLocati
 expect object PlatformDefaultSettings : DefaultAppSettings
 
 abstract class DefaultAppSettings {
-    open val theme: String get() = "dark"
+    // follow the OS dark/light setting out of the box; ThemeManager maps the
+    // special id "system" to defaultDarkTheme/defaultLightTheme per OS state
+    open val theme: String get() = "system"
     open val defaultDarkTheme: String get() = "dark"
     open val defaultLightTheme: String get() = "light"
     open val language: String? get() = null

@@ -2,7 +2,10 @@ package com.abdownloadmanager.android.util
 
 object AndroidConstants {
     const val SERVICE_NOTIFICATION_ID = 1
-    const val NOTIFICATION_DOWNLOAD_CHANEL_ID = "downloads"
+    // A channel's importance is frozen once the channel exists, so the id is bumped
+    // whenever the intended behaviour changes: "downloads" was created as
+    // IMPORTANCE_LOW (silent) and is deleted on startup in favour of this one.
+    const val NOTIFICATION_DOWNLOAD_CHANEL_ID = "downloads_v2"
     const val NOTIFICATION_DOWNLOAD_CHANEL_NAME = "Download Manager Service"
 
     const val NOTIFICATION_SERVICE_CHANEL_ID = "service"

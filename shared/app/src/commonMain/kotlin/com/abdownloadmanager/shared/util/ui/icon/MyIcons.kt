@@ -17,6 +17,7 @@ object MyIcons : BaseMyColors() {
     override val link = ABDMIcons.AddLink.asIconSource("link")
     override val download = ABDMIcons.DownSpeed.asIconSource("download")
     override val permission = ABDMIcons.Permission.asIconSource("permission")
+    override val battery = ABDMIcons.Battery.asIconSource("battery")
 
     override val windowMinimize = ABDMIcons.WindowMinimize.asIconSource("windowMinimize")
     override val windowFloating = ABDMIcons.WindowFloating.asIconSource("windowFloating")

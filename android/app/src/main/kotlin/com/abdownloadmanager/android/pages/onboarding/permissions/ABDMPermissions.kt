@@ -67,18 +67,11 @@ object ABDMPermissions {
         )
     }
 
-    val importantPermissions = buildList {
-        add(StoragePermission)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            add(createPostNotificationPermission())
-        }
-    }
-
     // these are not introduced in the main screen.
     val BatteryOptimizationPermission = AppPermission(
         title = Res.string.permissions_ignore_battery_optimization_title.asStringSource(),
         description = Res.string.permissions_ignore_battery_optimization_reason.asStringSource(),
-        icon = MyIcons.settings,
+        icon = MyIcons.battery,
         isOptional = true,
         permissions = listOf(),
         permissionRequestFactory = CustomPermissionActivityLauncher(::requestIgnoreBatteryOptimizationPermission),
@@ -91,5 +84,18 @@ object ABDMPermissions {
             }
         }
     )
+
+    // Declared after BatteryOptimizationPermission on purpose: object properties are
+    // initialized in declaration order, so referencing it further up would read null.
+    // Order inside the list does not matter either - PermissionComponent sorts
+    // optional entries last, so battery optimization always comes after storage
+    // and notifications.
+    val importantPermissions = buildList {
+        add(StoragePermission)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            add(createPostNotificationPermission())
+        }
+        add(BatteryOptimizationPermission)
+    }
 }
 

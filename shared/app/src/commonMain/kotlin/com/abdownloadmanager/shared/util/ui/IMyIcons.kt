@@ -14,6 +14,7 @@ interface IMyIcons {
     val link: IconSource
     val download: IconSource
     val permission: IconSource
+    val battery: IconSource
     val windowMinimize: IconSource
     val windowFloating: IconSource
     val windowMaximize: IconSource
